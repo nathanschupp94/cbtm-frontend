@@ -163,6 +163,56 @@ const COST_OPTIONS = [
   { id: "$$$$", label: "$$$$", desc: "$100+" },
 ];
 
+// ── Affiliate Links ─────────────────────────────────────
+// TODO: Replace these placeholder IDs with real ones once approved:
+//   SeatGeek Partner Program: https://seatgeek.com/partner
+//   Eventbrite Affiliate (via Impact Radius): https://www.eventbrite.com/affiliate
+const SEATGEEK_AID = "PLACEHOLDER_SEATGEEK_AID";
+const EVENTBRITE_AFF = "PLACEHOLDER_EVENTBRITE_AFF";
+
+function buildAffiliateUrl(sourceUrl, source) {
+  if (!sourceUrl) return null;
+  try {
+    const url = new URL(sourceUrl);
+    if (source === "seatgeek" || url.hostname.includes("seatgeek.com")) {
+      url.searchParams.set("aid", SEATGEEK_AID);
+      url.searchParams.set("pid", "cbtm_events");
+    } else if (source === "eventbrite" || url.hostname.includes("eventbrite.com")) {
+      url.searchParams.set("aff", EVENTBRITE_AFF);
+    }
+    url.searchParams.set("utm_source", "cbtm_events");
+    url.searchParams.set("utm_medium", "referral");
+    return url.toString();
+  } catch {
+    return sourceUrl;
+  }
+}
+
+// ── Analytics ───────────────────────────────────────────
+function trackEvent(eventName, params) {
+  if (typeof window.gtag === "function") {
+    window.gtag("event", eventName, params);
+  }
+}
+
+function trackCtaClick(event) {
+  trackEvent("cta_click", {
+    event_title: event.title,
+    event_venue: event.venue,
+    event_genre: event.genre,
+    event_source: event.source,
+    event_cost_tier: event.cost_tier,
+  });
+}
+
+function trackCardOpen(event) {
+  trackEvent("event_card_click", {
+    event_title: event.title,
+    event_genre: event.genre,
+    event_venue: event.venue,
+  });
+}
+
 // ── Supabase Fetch ──────────────────────────────────────
 async function fetchEvents(date, genre, subGenre, size, cost) {
   const headers = { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` };
@@ -456,7 +506,7 @@ export default function App() {
             <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "4px 0" }}>
               {events.map((event, idx) => (
                 <div key={event.event_hash || idx} className="event-card"
-                  onClick={() => setSelectedEvent(event)}
+                  onClick={() => { setSelectedEvent(event); trackCardOpen(event); }}
                   style={{ animationDelay: `${idx * 0.04}s`, animation: "fadeIn 0.4s ease forwards", opacity: 0 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -616,7 +666,9 @@ export default function App() {
 
             {/* CTA Button */}
             {selectedEvent.source_url && (
-              <a href={selectedEvent.source_url} target="_blank" rel="noopener noreferrer"
+              <a href={buildAffiliateUrl(selectedEvent.source_url, selectedEvent.source)}
+                target="_blank" rel="noopener noreferrer"
+                onClick={() => trackCtaClick(selectedEvent)}
                 style={{
                   display: "block", width: "100%", padding: 16, background: ACCENT, color: BG,
                   border: "none", borderRadius: 14, fontSize: 15, fontWeight: 700,

@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# TODO: Add sitemap once dynamic sitemap generation is set up (Phase 2)
+# Sitemap: https://cbtm.events/sitemap.xml
